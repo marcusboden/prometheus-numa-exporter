@@ -1,76 +1,59 @@
-import socket
+"""Module for j-b-a exporter."""
+
 import threading
 from logging import getLogger
 from socketserver import ThreadingMixIn
+from typing import Any
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from prometheus_client import make_wsgi_app
 from prometheus_client.core import REGISTRY
+from prometheus_client.registry import Collector
 
 logger = getLogger(__name__)
 
 
-def _get_best_family(address, port):
-    """Automatically select address family depending on address."""
-    # Copied from
-    # https://github.com/prometheus/client_python/blob/master/prometheus_client/exposition.py#L152
-    infos = socket.getaddrinfo(address, port)
-    family, _, _, _, sockaddr = next(iter(infos))
-    return family, sockaddr[0]
+class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
+    """A WSGI server that handle requests in a separate thread."""
 
-
-def _get_exporter_server(address, port):
-    """Return a threaded HTTP server with best address family."""
-    addr_family, addr = _get_best_family(str(address), int(port))
-
-    class ThreadedWSGIServer(ThreadingMixIn, WSGIServer):
-        """A WSGI server that handle requests in a separate thread."""
-
-        address_family = addr_family
-
-    return ThreadedWSGIServer, addr
+    daemon_threads = True
 
 
 class SlientRequestHandler(WSGIRequestHandler):
     """A Slient Request handler."""
 
-    def log_message(self, format, *args):
+    def log_message(self, format: str, *args: Any) -> None:  # pylint: disable=W0622
         """Log nothing."""
-        pass  # pragma: no cover
 
 
-class Exporter(object):
+class Exporter:
     """The exporter class."""
 
-    def __init__(self, port, addr="0.0.0.0"):
+    def __init__(self, port: int, addr: str = "0.0.0.0") -> None:
         """Initialize the exporter class.
 
         Args:
             port: Start the exporter at this port.
             addr: Start the exporter at this address.
         """
+        self.addr = addr
         self.port = int(port)
         self.app = make_wsgi_app()
-        self.server_class, self.addr = _get_exporter_server(addr, port)
 
-    def register(self, collector):
+    def register(self, collector: Collector) -> None:
         """Register collector to the exporter."""
         REGISTRY.register(collector)
 
-    def run(self, daemon=False):
+    def run(self, daemon: bool = False) -> None:
         """Start the exporter server."""
         httpd = make_server(
             self.addr,
             self.port,
             self.app,
-            self.server_class,
+            server_class=ThreadingWSGIServer,
             handler_class=SlientRequestHandler,
         )
-        logger.info(
-            "Started promethesus juju-backup-all exporter at {}:{}.".format(
-                self.addr, self.port
-            )
-        )
-        t = threading.Thread(target=httpd.serve_forever)
-        t.daemon = daemon
-        t.start()
+        logger.info("Started promethesus juju-backup-all exporter at %s:%s.", self.addr, self.port)
+        thread = threading.Thread(target=httpd.serve_forever)
+        thread.daemon = daemon
+        thread.start()
