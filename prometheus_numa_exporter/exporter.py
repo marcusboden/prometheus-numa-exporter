@@ -53,7 +53,7 @@ class Exporter:
             server_class=ThreadingWSGIServer,
             handler_class=SlientRequestHandler,
         )
-        logger.info("Started promethesus juju-backup-all exporter at %s:%s.", self.addr, self.port)
+        logger.info("Started promethesus numa exporter at %s:%s.", self.addr, self.port)
         thread = threading.Thread(target=httpd.serve_forever)
         thread.daemon = daemon
         thread.start()

@@ -3,6 +3,7 @@
 import argparse
 import logging
 
+from .collector import NumaUsageCollector
 from .config import DEFAULT_CONFIG, Config
 from .exporter import Exporter
 
@@ -28,12 +29,13 @@ def parse_command_line() -> argparse.Namespace:
 
 
 def main() -> None:
-    """Start the prometheus-juju-backup-all exporter."""
+    """Start the prometheus-numa exporter."""
     args = parse_command_line()
     config = Config.load_config(config_file=args.config or DEFAULT_CONFIG)
     root_logger.setLevel(logging.getLevelName(config.level))
 
     exporter = Exporter(config.port)
+    exporter.register(NumaUsageCollector(config))
     exporter.run()
 
 
