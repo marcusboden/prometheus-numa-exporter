@@ -1,3 +1,4 @@
+setuptools
 prometheus-client
 pydantic
 pyyaml
