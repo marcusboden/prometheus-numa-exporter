@@ -10,12 +10,12 @@ logger = getLogger(__name__)
 
 DEFAULT_CONFIG = os.path.join(os.environ.get("SNAP_DATA", "./"), "config.yaml")
 
-
 class Config(BaseModel):
-    """Juju backup all configuration."""
+    """numa exporter configuration."""
 
-    port: int = 10000
+    port: int = 9116
     level: str = "DEBUG"
+    nova_config: str = "/etc/nova/nova.conf"
 
     @validator("port")
     def validate_port_range(cls, port: int) -> int:  # noqa: N805 pylint: disable=E0213
@@ -26,16 +26,14 @@ class Config(BaseModel):
             raise ValueError(msg)
         return port
 
-    @validator("level")
-    def validate_level_choice(cls, level: str) -> str:  # noqa: N805 pylint: disable=E0213
-        """Validate logging level choice."""
-        level = level.upper()
-        choices = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
-        if level not in choices:
-            msg = f"Level must be in {choices} (case-insensitive)."
+    @validator("nova_config")
+    def validate_nova_config(cls, nova_config: str) -> str:  # noqa: N805 pylint: disable=E0213
+        """Validate the nova config"""
+        if not os.path.isfile(nova_config):
+            msg = f"File {nova_config} does not exist"
             logger.error(msg)
             raise ValueError(msg)
-        return level
+        return nova_config
 
     @classmethod
     def load_config(cls, config_file: str = DEFAULT_CONFIG) -> "Config":

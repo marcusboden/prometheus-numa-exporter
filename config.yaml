@@ -1,0 +1,2 @@
+nova_config: ./testdata/etc/nova/nova.conf
+#nova_config: /etc/nova/nova.conf
