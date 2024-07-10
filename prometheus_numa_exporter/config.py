@@ -1,5 +1,6 @@
-"""Module for j-b-a related configuration."""
+"""Module for p-n-e related configuration."""
 
+import ipaddress
 import os
 from logging import getLogger
 
@@ -15,6 +16,7 @@ class Config(BaseModel):
 
     port: int = 9116
     level: str = "DEBUG"
+    address: str = "0.0.0.0"
     nova_config: str = "/etc/nova/nova.conf"
 
     @validator("port")
@@ -34,6 +36,28 @@ class Config(BaseModel):
             logger.error(msg)
             raise ValueError(msg)
         return nova_config
+
+    @validator("address")
+    def validate_address(cls, address: str) -> str:  # noqa: N805 pylint: disable=E0213
+        """Validate address."""
+        try:
+            ip = ipaddress.ip_address(address)
+        except ValueError:
+            msg = f'IP address {address} is not a valid IP address'
+            logger.error(msg)
+            raise ValueError(msg)
+        return address
+
+    @validator("level")
+    def validate_level_choice(cls, level: str) -> str:  # noqa: N805 pylint: disable=E0213
+        """Validate logging level choice."""
+        level = level.upper()
+        choices = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        if level not in choices:
+            msg = f"Level must be in {choices} (case-insensitive)."
+            logger.error(msg)
+            raise ValueError(msg)
+        return level
 
     @classmethod
     def load_config(cls, config_file: str = DEFAULT_CONFIG) -> "Config":

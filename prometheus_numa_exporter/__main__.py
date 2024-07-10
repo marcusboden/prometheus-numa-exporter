@@ -34,7 +34,7 @@ def main() -> None:
     config = Config.load_config(config_file=args.config or DEFAULT_CONFIG)
     root_logger.setLevel(logging.getLevelName(config.level))
 
-    exporter = Exporter(config.port)
+    exporter = Exporter(config.port, config.address)
     exporter.register(NumaUsageCollector(config))
     exporter.run()
 
