@@ -1,0 +1,34 @@
+#!/bin/bash
+set -euxo pipefail
+
+config_file="$SNAP_DATA/config.yaml"
+
+declare -A defaults
+defaults[port]="10000"
+defaults[address]="0.0.0.0"
+defaults[nova_config]="/etc/nova/nova.conf"
+defaults[level]="DEBUG"
+
+# gets the current config and sets it to the default value if necessary
+getter() {
+  opt_val="$(snapctl get $1)"
+  if [ -z "$opt_val" ]; then
+    opt_val="${defaults[$1]}"
+    snapctl set $1="$opt_val"
+  fi
+  echo "$opt_val"
+}
+
+# I could just rm -f, but I'd rather not...
+if [[ -f "$config_file" ]]; then
+  rm $config_file
+fi
+
+for key in "${!defaults[@]}"; do
+#  if [[ "$key" == "address" ]]; then
+#    address=$(getter $key)
+#    python -c "import ipaddress; ipaddress.ip_address(\"$address\")"
+  echo "$key: $(getter $key)" >> $config_file
+done
+
+snapctl restart prometheus-numa-exporter

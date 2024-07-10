@@ -5,8 +5,7 @@ from setuptools import setup
 configs = {
     "name": "prometheus-numa-exporter",
     "description": "exports numa metrics on openstack compute hosts",
-    "use_scm_version": True,
-    "setup_requires": ["setuptools_scm", "pyyaml"],
+    "setup_requires": ["setuptools", "pyyaml"],
     "author": "Canonical Managed Solutions",
     "packages": ["prometheus_numa_exporter"],
     "url": "https://github.com/canonical/prometheus-numa-exporter",

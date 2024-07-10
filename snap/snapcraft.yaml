@@ -2,6 +2,7 @@ name: prometheus-numa-exporter
 base: core22
 adopt-info: prometheus-numa-exporter
 summary: collects backup results and exports them as metrics
+version: 0.1
 description: |
   The prometheus-numa-exporter is a snap for collecting metrics
   about the usage of NUMA domains on OpenStack hosts. These results
@@ -9,6 +10,12 @@ description: |
 
 grade: devel
 confinement: strict
+
+plugs:
+  etc-nova-nova-conf:
+    interface: system-files
+    read:
+    - /etc/nova/nova.conf
 
 apps:
   prometheus-numa-exporter:
@@ -18,12 +25,11 @@ apps:
     command: bin/prometheus-numa-exporter
     plugs:
       - network-bind
+      - etc-nova-nova-conf
+      - hardware-observe
 
 parts:
   prometheus-numa-exporter:
     source: .
     plugin: python
     python-requirements: [./requirements.txt]
-    override-build: |
-      craftctl default
-      craftctl set version=0.0.1
