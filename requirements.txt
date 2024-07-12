@@ -1,3 +1,4 @@
+libvirt-python
 setuptools
 prometheus-client
 pydantic

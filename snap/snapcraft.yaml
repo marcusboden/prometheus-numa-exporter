@@ -11,6 +11,10 @@ description: |
 grade: devel
 confinement: strict
 
+  #layout:
+  #  /etc/libvirt/libvirt.conf:
+  #    bind-file: $SNAP_DATA/libvirt.conf
+
 plugs:
   etc-nova-nova-conf:
     interface: system-files
@@ -24,6 +28,7 @@ apps:
     restart-condition: on-abnormal
     command: bin/prometheus-numa-exporter
     plugs:
+      - libvirt
       - network-bind
       - etc-nova-nova-conf
       - hardware-observe
@@ -33,3 +38,9 @@ parts:
     source: .
     plugin: python
     python-requirements: [./requirements.txt]
+    build-packages:
+      - gcc
+      - pkg-config
+      - libvirt-dev
+    stage-packages:
+      - libvirt-dev

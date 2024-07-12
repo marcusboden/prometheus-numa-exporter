@@ -1,5 +1,5 @@
 import json
-import subprocess
+import libvirt
 import xml.etree.ElementTree as ET
 import glob
 from logging import getLogger
@@ -7,11 +7,6 @@ from pathlib import Path
 from .config import Config
 
 logger = getLogger(__name__)
-
-DEFAULT_DURATION = 0
-#PREF = "/home/marcus/prometheus-numa-exporter/testdata/"
-#NOVA_CONF = PREF + "etc/nova/nova.conf"
-
 
 class NumaInfo:
     """A class representing all Numa Info from the system"""
@@ -30,14 +25,9 @@ class NumaInfo:
         nic_metrics = {}
 
         for nic in list(self._numa_nic_map[numa]):
-            free = 0
-            used = 0
-            for mac in _get_VFs(nic):
-                if mac == "00:00:00:00:00:00":
-                    free += 1
-                else:
-                    used += 1
-            nic_metrics[nic] = {"network": self._nics[nic], "free": free, "used": used}
+            vf_paths = glob.glob("/sys/class/net/{nic}/device/virtfn*/enable")
+            vf_list = [_get_VF_state(p) for p in vf_paths]
+            nic_metrics[nic] = {"network": self._nics[nic], "free": vf_list.count(0), "used": vf_list.count(1)}
         return nic_metrics
 
     def get_cpu_metrics(self):
@@ -113,10 +103,6 @@ def _get_cpus(numa: str) -> list[int]:
     with open(f'/sys/devices/system/node/{numa}/cpulist', 'r') as f:
         return _parse_cpu_range(f.read().strip())
 
-def _run_cmd(cmd):
-    output = subprocess.run(cmd, stdout=subprocess.PIPE, encoding="utf-8")
-    return output.stdout.splitlines()
-
 def _get_pinning_from_dump(dump):
     root = ET.fromstringlist(dump)
     cputune = root.find("cputune")
@@ -128,19 +114,30 @@ def _get_sibling(n):
 
 def _get_used_cpus():
     try:
-        output = _run_cmd(["/usr/bin/virsh","list","--uuid"])
-    except FileNotFoundError:
-        logger.error("virsh not found, cannot read VM CPU pinning, reporting 0.")
-        return set()
+        conn = libvirt.openReadOnly(None)
+    except libvirt.libvirtError as e:
+        logger.error('Failed to open connection to the hypervisor')
+        raise(e)
+
     pinned_cpus = []
-    for uuid in output:
-        if uuid != "":
-            dump = _run_cmd(["/usr/bin/virsh", "dumpxml", uuid])
-            pinned_cpus += _get_pinning_from_dump(dump)
+    for did in conn.listDomainsID():
+        dom = conn.lookupByID(did)
+        # vCPUPinInfo returns a tuple for each vCPU. This tuple has the length of
+        # the real CPUs on the system and True/False indicating if the vCPU is
+        # pinned to that real CPU
+        for cpu in dom.vcpuPinInfo():
+           pinned_cpus += [i for i in range(len(cpu)) if cpu[i] ]
+
+        # Similar to the one above, just one fewer level of loops, since it's not per CPU
+        emu = dom.emulatorPinInfo()
+        pinned_cpus += [i for i in range(len(emu)) if emu[i] ]
+
+    conn.close()
+
     merged = []
     for cpu in pinned_cpus:
         merged.extend(_get_sibling(cpu))
-    return set(pinned_cpus)
+    return set(merged)
 
 def _parse_cpu_range(cpu):
     cpu_list = []
@@ -151,14 +148,9 @@ def _parse_cpu_range(cpu):
             cpu_list.append(int(i))
     return cpu_list
 
-def _get_VFs(nic):
-    output = _run_cmd(["/usr/bin/ip", "l", "show", nic])
-    vf_list = []
-    for line in output:
-        if line.startswith("    vf"):
-            vf = line.split()
-            vf_list.insert(int(vf[1]), vf[3].strip(","))
-    return vf_list
+def _get_VF_state(p):
+    with open(p, 'r') as f:
+        return f.read().strip()
 
 def _get_numa_of_nic(nic):
     with open(f"/sys/class/net/{nic}/device/numa_node", "r", encoding="utf-8") as f:
