@@ -13,7 +13,6 @@ class NumaInfo:
 
     def __init__(self, config: Config) -> None:
         """Initialize and set instance properties."""
-        self._nova_conf = config.nova_config
         self._numa_nodes = _get_numa_nodes()
         self._nics = self._get_nics()
         self._numa_nic_map = self._get_numa_nic_mapping()

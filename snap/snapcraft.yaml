@@ -32,4 +32,4 @@ parts:
       - pkg-config
       - libvirt-dev
     stage-packages:
-      - libvirt-dev
+      - libvirt-clients

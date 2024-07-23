@@ -16,7 +16,7 @@ class NumaUsageCollector(BlockingCollector):
 
     @property
     def specifications(self) -> List[Specification]:
-        """Backup event metrics specs."""
+        """Numa metrics specs."""
         return [
             Specification(
                 name="numa_cpu_used",
