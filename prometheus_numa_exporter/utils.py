@@ -168,7 +168,5 @@ def _get_VF_state(p):
 def _get_numa_of_nic(nic):
     with open(f"/sys/class/net/{nic}/device/numa_node", "r", encoding="utf-8") as f:
         node = int(f.read().strip()) 
-        if node < 0:
-            raise Exception(f"NIC {nic} is not bound to a numa but in the passthrough_whitelist. I don't think this should happen.")
         return node
 
