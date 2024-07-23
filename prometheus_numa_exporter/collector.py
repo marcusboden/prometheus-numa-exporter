@@ -62,50 +62,54 @@ class NumaUsageCollector(BlockingCollector):
         cpu_metrics = numa_info.get_cpu_metrics()
         payload = []
         for n in numa_info.numa_nodes:
-            payload.append(
-                Payload(
-                    name="numa_cpu_used",
-                    labels=[n],
-                    value=len(cpu_metrics[n]["used"])
-                ),
-            )
-            payload.append(
-                Payload(
-                    name="numa_cpu_free",
-                    labels=[n],
-                    value=len(cpu_metrics[n]["free"])
-                ),
-            )
-            hp = numa_info.get_hugepages(n)
-            payload.append(
-                Payload(
-                    name="numa_hugepages_used",
-                    labels=[n,hp["size"]],
-                    value=hp["used"]
-                ),
-            )
-            payload.append(
-                Payload(
-                    name="numa_hugepages_free",
-                    labels=[n,hp["size"]],
-                    value=hp["free"]
-                ),
-            )
-            for nic, data in numa_info.get_nic_metrics(n).items():
+            if numa_info.cpu_pin_used:
+                cpu_metrics = numa_info.get_cpu_metrics()
                 payload.append(
                     Payload(
-                        name="numa_nic_VFs_free",
-                        labels=[n, nic, data["network"]],
-                        value=data["free"]
-                    )
+                        name="numa_cpu_used",
+                        labels=[n],
+                        value=len(cpu_metrics[n]["used"])
+                    ),
                 )
                 payload.append(
                     Payload(
-                        name="numa_nic_VFs_used",
-                        labels=[n, nic, data["network"]],
-                        value=data["used"]
-                    )
+                        name="numa_cpu_free",
+                        labels=[n],
+                        value=len(cpu_metrics[n]["free"])
+                    ),
                 )
+            if numa_info.hugepages_used:
+                hp = numa_info.get_hugepages(n)
+                payload.append(
+                    Payload(
+                        name="numa_hugepages_used",
+                        labels=[n,hp["size"]],
+                        value=hp["used"]
+                    ),
+                )
+                payload.append(
+                    Payload(
+                        name="numa_hugepages_free",
+                        labels=[n,hp["size"]],
+                        value=hp["free"]
+                    ),
+                )
+            if numa_info.sriov_used:
+                for nic, data in numa_info.get_nic_metrics(n).items():
+                    payload.append(
+                        Payload(
+                            name="numa_nic_VFs_free",
+                            labels=[n, nic, data["network"]],
+                            value=data["free"]
+                        )
+                    )
+                    payload.append(
+                        Payload(
+                            name="numa_nic_VFs_used",
+                            labels=[n, nic, data["network"]],
+                            value=data["used"]
+                        )
+                    )
         return payload
 
     def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:

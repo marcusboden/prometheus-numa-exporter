@@ -14,10 +14,27 @@ class NumaInfo:
     def __init__(self, config: Config) -> None:
         """Initialize and set instance properties."""
         self._numa_nodes = _get_numa_nodes()
-        self._nics = self._get_nics()
-        self._numa_nic_map = self._get_numa_nic_mapping()
-        self._numa_cpus = {n: set(_get_cpus(n)) for n in self._numa_nodes}
-        self._nova_cpus = self._get_nova_cpus() #expecting this not to change. For now
+
+        self.hugepages_used = False
+        self.cpu_pin_used = False
+        self.sriov_used = False
+
+        # Do we need to report on Hugepages?
+        self._hugepage_size = _get_hugepage_size()
+        if self._hugepage_size:
+            self.hugepages_used = True
+
+        # Do we need to report on sriov nics?
+        self.sriov_used = _sriov_enabled(config.network_interfaces.keys())
+        if self.sriov_used:
+            self._nics = config.network_interfaces
+            self._numa_nic_map = self._get_numa_nic_mapping()
+
+        # Do we need to report on CPUs (not necessary w/o pin)
+        if config.cpu_dedicated_set:
+            self.cpu_pin_used = True
+            self._nova_cpus = set(_parse_cpu_range(config.cpu_dedicated_set))
+            self._numa_cpus = {n: set(_get_cpus(n)) for n in self._numa_nodes}
 
     def get_nic_metrics(self, numa):
         """{nic1: {network: sriovc1, free: 3, used: 4}"""
@@ -41,21 +58,13 @@ class NumaInfo:
         return cpu_metrics
 
     def get_hugepages(self, numa):
-        size = 0
-        free = 0
-        total = 0
-        with open("/proc/meminfo", "r", encoding="utf-8") as f:
-            for line in f.readlines():
-                if line.startswith(f"Hugepagesize:"):
-                    size = line.split()[1]
-
         with open(f"/sys/devices/system/node/{numa}/meminfo", "r", encoding="utf-8") as f:
             for line in f.readlines():
                 if line.startswith(f"Node {numa[-1]} HugePages_Free"):
                     free = int(line.split()[3])
                 if line.startswith(f"Node {numa[-1]} HugePages_Total"):
                     total = int(line.split()[3])
-        return {"free": free, "used": total-free, "size": size}
+        return {"free": free, "used": total-free, "size": str(self._hugepage_size)}
 
     @property
     def numa_nodes(self) -> list[str]:
@@ -65,34 +74,35 @@ class NumaInfo:
     def _get_numa_nic_mapping(self):
         numa_nics = { n: [] for n in self._numa_nodes }
         for nic in self._nics:
-            numa_nics[f"node{_get_numa_of_nic(nic)}"].append(nic)
+            numa = _get_numa_of_nic(nic)
+            if numa < 0:
+                logger.error(f"NIC {nic} is not bound to a numa but in the passthrough_whitelist.")
+            else: 
+                numa_nics[f"node{numa}"].append(nic)
         return numa_nics
 
-    def _get_nova_cpus(self):
-        try:
-            with open(self._nova_conf, 'r') as f:
-                for line in f.readlines():
-                    if line.startswith("cpu_dedicated_set"):
-                        return set(_parse_cpu_range(line.split("=")[1]))
-                raise Exception("cpu_dedicated_set not definced in nova config") 
-        except OSError as e:
-            logger.error(f"Could not open/read file {self._nova_conf}")
-            raise e
-        return set()
+def _sriov_enabled(nics):
+    found = False
+    for n in nics:
+        try: 
+            with open(f"/sys/class/net/{n}/device/sriov_numvfs","r", encoding="utf-8") as f:
+                if int(f.read().strip()) != 0:
+                    logger.debug(f"Found {f.read().strip()} potential VFs for nic {n}")
+                    found = True
+        except FileNotFoundError:
+            logger.info(f'No VFs found for nic {n}')
+    return found
 
-    def _get_nics(self):
-        try:
-            with open(self._nova_conf, 'r') as f:
-                for line in f.readlines():
-                    if line.startswith("passthrough_whitelist"):
-                        nic_dict = {}
-                        for nic in json.loads((line.split("=")[1])):
-                            nic_dict[nic["devname"]] = nic["physical_network"]
-                        return nic_dict
-        except OSError:
-            logger.error(f"Could not open/read file {self._nova_conf}")
-        return {}
-
+def _get_hugepage_size():
+    """ Returns the hugepage size or 0 if there are no hugepages configured"""
+    with open("/proc/meminfo", "r", encoding="utf-8") as f:
+        for line in f.readlines():
+            if line.startswith("HugePages_Total:"):
+                if int(line.split()[1]) == 0:
+                    return 0
+            if line.startswith("Hugepagesize:"):
+                size = line.split()[1]
+    return size
 
 def _get_numa_nodes() -> list[str]:
     numas = glob.glob("/sys/devices/system/node/node*")
