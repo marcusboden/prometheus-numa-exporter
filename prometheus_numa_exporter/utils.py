@@ -109,8 +109,12 @@ def _get_pinning_from_dump(dump):
     return [int(c.attrib["cpuset"]) for c in cputune.findall("vcpupin")]
 
 def _get_sibling(n):
-    with open("/sys/devices/system/cpu/cpu{n}/topology/thread_siblings_list", "r", encoding="utf-8") as f:
-        return _parse_cpu_range(f.read().strip())
+    try:
+        with open(f"/sys/devices/system/cpu/cpu{n}/topology/thread_siblings_list", "r", encoding="utf-8") as f:
+            return _parse_cpu_range(f.read().strip())
+    except FileNotFoundError:
+        logger.debug(f'No siblings found for cpu {n}')
+        return [n]
 
 def _get_used_cpus():
     try:
