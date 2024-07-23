@@ -1,8 +1,8 @@
 name: prometheus-numa-exporter
 base: core22
 adopt-info: prometheus-numa-exporter
-summary: collects backup results and exports them as metrics
-version: 0.1
+summary: Collects usage metrics per NUMA domain and exports them.
+version: 0.2
 description: |
   The prometheus-numa-exporter is a snap for collecting metrics
   about the usage of NUMA domains on OpenStack hosts. These results
