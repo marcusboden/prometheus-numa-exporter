@@ -6,7 +6,6 @@ config_file="$SNAP_DATA/config.yaml"
 declare -A defaults
 defaults[port]="10000"
 defaults[address]="0.0.0.0"
-defaults[nova_config]="/etc/nova/nova.conf"
 defaults[level]="DEBUG"
 
 # gets the current config and sets it to the default value if necessary
@@ -19,16 +18,43 @@ getter() {
   echo "$opt_val"
 }
 
+config_port() {
+  echo "port: $(getter port)" >> $config_file
+}
+
+config_level() {
+  echo "level: $(getter level)" >> $config_file
+}
+
+config_address() {
+  address=$(getter address)
+  python -c "import ipaddress; ipaddress.ip_address('$address')" || exit 1
+  echo "address: $address" >> $config_file
+}
+
+config_cds() {
+  cpu="$(snapctl get cpu-dedicated-set)"
+  if [[ -n $cpu ]]; then
+    echo "cpu_dedicated_set: $cpu" >> $config_file
+  fi
+}
+
+config_network_interfaces() {
+  net="$(snapctl get network-interfaces)"
+  if [[ -n $net ]]; then
+     echo $net | python -c 'import yaml; import sys; import json; print(yaml.dump({"network_interfaces": json.load(sys.stdin)}))' >> $config_file || exit 1
+  fi
+}
+
 # I could just rm -f, but I'd rather not...
 if [[ -f "$config_file" ]]; then
   rm $config_file
 fi
 
-for key in "${!defaults[@]}"; do
-#  if [[ "$key" == "address" ]]; then
-#    address=$(getter $key)
-#    python -c "import ipaddress; ipaddress.ip_address(\"$address\")"
-  echo "$key: $(getter $key)" >> $config_file
-done
+config_port
+config_level
+config_address
+config_cds
+config_network_interfaces
 
 snapctl restart prometheus-numa-exporter

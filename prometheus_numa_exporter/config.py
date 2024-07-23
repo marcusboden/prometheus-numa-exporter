@@ -1,7 +1,9 @@
 """Module for p-n-e related configuration."""
 
 import ipaddress
+import re
 import os
+from pathlib import Path
 from logging import getLogger
 
 from pydantic import BaseModel, validator
@@ -17,7 +19,8 @@ class Config(BaseModel):
     port: int = 9116
     level: str = "DEBUG"
     address: str = "0.0.0.0"
-    nova_config: str = "/etc/nova/nova.conf"
+    cpu_dedicated_set: str = ""
+    network_interfaces: dict = {}
 
     @validator("port")
     def validate_port_range(cls, port: int) -> int:  # noqa: N805 pylint: disable=E0213
@@ -27,15 +30,6 @@ class Config(BaseModel):
             logger.error(msg)
             raise ValueError(msg)
         return port
-
-    @validator("nova_config")
-    def validate_nova_config(cls, nova_config: str) -> str:  # noqa: N805 pylint: disable=E0213
-        """Validate the nova config"""
-        if not os.path.isfile(nova_config):
-            msg = f"File {nova_config} does not exist"
-            logger.error(msg)
-            raise ValueError(msg)
-        return nova_config
 
     @validator("address")
     def validate_address(cls, address: str) -> str:  # noqa: N805 pylint: disable=E0213
@@ -58,6 +52,28 @@ class Config(BaseModel):
             logger.error(msg)
             raise ValueError(msg)
         return level
+
+    @validator("cpu_dedicated_set")
+    def validate_cpu_dedicated_set(cls, cpu_dedicated_set: str) -> list:  # noqa: N805 pylint: disable=E0213
+        """Validate cpu_dedicated_set. Should be taken from nova-config"""
+        if not re.fullmatch(r'(((\d-\d)|\d),?)+', cpu_dedicated_set):
+            msg = f"cpu_dedicated_set {cpu_dedicated_set} is not valid"
+            logger.error(msg)
+            raise ValueError(msg)
+        return cpu_dedicated_set
+
+    @validator("network_interfaces")
+    def validate_network_interfaces(cls, network_interfaces: list[dict]) -> list[dict]:  # noqa: N805 pylint: disable=E0213
+        """Validate network_interfaces configuration
+
+        dict of interface: "network_name" as defined in the nova config
+        """
+        for iface in network_interfaces:
+            if not Path(f"/sys/class/net/{iface}").is_dir():
+                msg = f"Network interface {iface} does not exists"
+                logger.error(msg)
+                raise ValueError(msg)
+        return network_interfaces
 
     @classmethod
     def load_config(cls, config_file: str = DEFAULT_CONFIG) -> "Config":

@@ -11,16 +11,6 @@ description: |
 grade: devel
 confinement: strict
 
-  #layout:
-  #  /etc/libvirt/libvirt.conf:
-  #    bind-file: $SNAP_DATA/libvirt.conf
-
-plugs:
-  etc-nova-nova-conf:
-    interface: system-files
-    read:
-    - /etc/nova/nova.conf
-
 apps:
   prometheus-numa-exporter:
     daemon: simple
@@ -30,7 +20,6 @@ apps:
     plugs:
       - libvirt
       - network-bind
-      - etc-nova-nova-conf
       - hardware-observe
 
 parts:
