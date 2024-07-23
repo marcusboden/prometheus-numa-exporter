@@ -8,7 +8,7 @@ description: |
   about the usage of NUMA domains on OpenStack hosts. These results
   are exorted as prometheus metrics.
 
-grade: devel
+grade: stable
 confinement: strict
 
 apps:
