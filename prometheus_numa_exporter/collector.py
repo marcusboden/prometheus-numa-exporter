@@ -59,7 +59,6 @@ class NumaUsageCollector(BlockingCollector):
     def fetch(self) -> List[Payload]:
         """Load the backup event data."""
         numa_info = NumaInfo(self.config)
-        cpu_metrics = numa_info.get_cpu_metrics()
         payload = []
         for n in numa_info.numa_nodes:
             if numa_info.cpu_pin_used:

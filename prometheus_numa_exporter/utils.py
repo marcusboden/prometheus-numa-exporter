@@ -127,7 +127,7 @@ def _get_sibling(n):
 
 def _get_used_cpus():
     try:
-        conn = libvirt.openReadOnly(None)
+        conn = libvirt.openReadOnly("qemu:///system?socket=/run/libvirt/libvirt-sock-ro")
     except libvirt.libvirtError as e:
         logger.error('Failed to open connection to the hypervisor')
         raise(e)
