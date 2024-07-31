@@ -163,7 +163,7 @@ def _parse_cpu_range(cpu):
 
 def _get_VF_state(p):
     with open(p, 'r') as f:
-        return f.read().strip()
+        return int(f.read().strip())
 
 def _get_numa_of_nic(nic):
     with open(f"/sys/class/net/{nic}/device/numa_node", "r", encoding="utf-8") as f:
