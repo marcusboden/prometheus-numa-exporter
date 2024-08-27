@@ -16,7 +16,7 @@ DEFAULT_CONFIG = os.path.join(os.environ.get("SNAP_DATA", "./"), "config.yaml")
 class Config(BaseModel):
     """numa exporter configuration."""
 
-    port: int = 9116
+    port: int = 9117
     level: str = "DEBUG"
     address: str = "0.0.0.0"
     cpu_dedicated_set: str = ""
