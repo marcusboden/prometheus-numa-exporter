@@ -41,7 +41,7 @@ class NumaInfo:
         nic_metrics = {}
 
         for nic in list(self._numa_nic_map[numa]):
-            vf_paths = glob.glob("/sys/class/net/{nic}/device/virtfn*/enable")
+            vf_paths = glob.glob(f"/sys/class/net/{nic}/device/virtfn*/enable")
             vf_list = [_get_VF_state(p) for p in vf_paths]
             nic_metrics[nic] = {"network": self._nics[nic], "free": vf_list.count(0), "used": vf_list.count(1)}
         return nic_metrics
