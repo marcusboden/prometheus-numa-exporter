@@ -86,8 +86,9 @@ def _sriov_enabled(nics):
     for n in nics:
         try: 
             with open(f"/sys/class/net/{n}/device/sriov_numvfs","r", encoding="utf-8") as f:
-                if int(f.read().strip()) != 0:
-                    logger.debug(f"Found {f.read().strip()} potential VFs for nic {n}")
+                num_vfs = int(f.read().strip())
+                if num_vfs != 0:
+                    logger.debug(f"Found {num_vfs} potential VFs for nic {n}")
                     found = True
         except FileNotFoundError:
             logger.info(f'No VFs found for nic {n}')
