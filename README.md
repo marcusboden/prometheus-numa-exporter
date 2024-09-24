@@ -53,3 +53,14 @@ numa_nic_VFs_free{network="sriovfabric2",nic="ens6f1",numa="node1"} 28.0
 # TYPE numa_nic_VFs_used gauge
 numa_nic_VFs_used{network="sriovfabric2",nic="ens6f1",numa="node1"} 4.0
 ```
+## Installation
+This software is available as a [snap](https://snapcraft.io/prometheus-numa-exporter/).
+## Config options
+| Option | Comment                                                                                                                                                             | Example | Default |
+|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|-----|
+| port | Port to listen on                                                                                                                                                   | 9778    | 9117 |
+| address | Address to bind to                                                                                                                                                  | 0.0.0.0 | 0.0.0.0 |
+| level | Log level                                                                                                                                                           | DEBUG   | DEBUG |
+| cpu_dedicated_set | the [cpu_dedicated_set](https://docs.openstack.org/nova/latest/configuration/config.html#compute.cpu_dedicated_set) entry from the nova.conf                        | `2-19,22-39,42-59,62-79`   |    |
+| network_interfaces | SR-IOV enabled network devices (see [passthrough_whitelist](https://docs.openstack.org/nova/yoga/configuration/config.html#pci.passthrough_whitelist) in nova.conf. |`{"ens3f0":"sriovfabric1","ens3f1":"sriovfabric2","ens6f0":"sriovfabric1","ens6f1":"sriovfabric2"}`
+|  |
